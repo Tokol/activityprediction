@@ -9,6 +9,7 @@ import pickle
 import tempfile
 import os
 from datetime import datetime
+import matplotlib  # Add this import
 
 # Check for required modules
 try:
@@ -464,6 +465,37 @@ if st.button("⚡ Compare Model Predictions", type="primary", use_container_widt
             st.session_state.predictions_df = predictions_df
 
             # ==========================
+            # DYNAMIC COLOR MAPPING FOR ACTIVITIES
+            # ==========================
+            # Get all unique activities from both models
+            all_activities = set()
+            if 'classes' in st.session_state.model1:
+                all_activities.update(st.session_state.model1['classes'])
+            if 'classes' in st.session_state.model2:
+                all_activities.update(st.session_state.model2['classes'])
+
+            # Also get activities from predictions
+            all_activities.update(predictions_df['model1_pred'].unique())
+            all_activities.update(predictions_df['model2_pred'].unique())
+
+            all_activities = list(all_activities)
+
+            # Create dynamic color mapping
+            matplotlib_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
+                                 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+
+            plotly_colors = ['blue', 'orange', 'green', 'red', 'purple',
+                             'brown', 'pink', 'gray', 'olive', 'cyan']
+
+            # Create color mappings for both matplotlib and plotly
+            matplotlib_activity_colors = {}
+            plotly_activity_colors = {}
+
+            for i, activity in enumerate(all_activities):
+                matplotlib_activity_colors[activity] = matplotlib_colors[i % len(matplotlib_colors)]
+                plotly_activity_colors[activity] = plotly_colors[i % len(plotly_colors)]
+
+            # ==========================
             # DISPLAY COMPARISON RESULTS
             # ==========================
             st.header("📊 Model Comparison Results")
@@ -509,13 +541,6 @@ if st.button("⚡ Compare Model Predictions", type="primary", use_container_widt
                 # Timeline comparison
                 fig_timeline = go.Figure()
 
-                # Colors for activities
-                activity_colors = {
-                    'walking': 'blue',
-                    'toe_rise': 'orange',
-                    'running': 'red'
-                }
-
                 # Add Model 1 predictions
                 for activity in predictions_df['model1_pred'].unique():
                     activity_data = predictions_df[predictions_df['model1_pred'] == activity]
@@ -527,7 +552,7 @@ if st.button("⚡ Compare Model Predictions", type="primary", use_container_widt
                             name=f'Model 1: {activity}',
                             marker=dict(
                                 size=10,
-                                color=activity_colors.get(activity, 'gray'),
+                                color=plotly_activity_colors.get(activity, 'gray'),
                                 symbol='circle',
                                 opacity=0.7
                             ),
@@ -550,7 +575,7 @@ if st.button("⚡ Compare Model Predictions", type="primary", use_container_widt
                             name=f'Model 2: {activity}',
                             marker=dict(
                                 size=10,
-                                color=activity_colors.get(activity, 'gray'),
+                                color=plotly_activity_colors.get(activity, 'gray'),
                                 symbol='square',
                                 opacity=0.7
                             ),
@@ -788,10 +813,10 @@ if st.button("⚡ Compare Model Predictions", type="primary", use_container_widt
             ax.plot(new_df["Time (s)"], new_df["magnitude"],
                     color="black", alpha=0.6, linewidth=0.8, label="Raw Signal")
 
-            # Add colored regions for Model 1 predictions
+            # Add colored regions for Model 1 predictions using dynamic colors
             for _, row in predictions_df.iterrows():
                 activity = row['model1_pred']
-                color = activity_colors.get(activity, 'gray')
+                color = matplotlib_activity_colors.get(activity, 'gray')
 
                 # Different opacity for disagreements
                 alpha = 0.15 if row['agree'] else 0.3
@@ -803,12 +828,15 @@ if st.button("⚡ Compare Model Predictions", type="primary", use_container_widt
             from matplotlib.patches import Patch
 
             legend_elements = []
-            for activity, color in activity_colors.items():
-                if activity in predictions_df['model1_pred'].values:
-                    legend_elements.append(
-                        Patch(facecolor=color, alpha=0.2,
-                              label=f"{activity.replace('_', ' ').title()} (Model 1)")
-                    )
+            # Only show activities that actually appear in predictions
+            predicted_activities = predictions_df['model1_pred'].unique()
+            for activity in predicted_activities:
+                color = matplotlib_activity_colors.get(activity, 'gray')
+                display_name = activity.replace('_', ' ').title()
+                legend_elements.append(
+                    Patch(facecolor=color, alpha=0.2,
+                          label=f"{display_name} (Model 1)")
+                )
 
             # Add disagreement markers
             disagreements = predictions_df[~predictions_df['agree']]
@@ -843,17 +871,17 @@ if st.button("⚡ Compare Model Predictions", type="primary", use_container_widt
             for activity in predictions_df['model1_pred'].unique():
                 activity_data = predictions_df[predictions_df['model1_pred'] == activity]
                 if len(activity_data) > 0:
-                    agreement_rate = activity_data['agree'].mean()
-                    avg_conf1 = activity_data['model1_conf'].mean()
-                    avg_conf2 = activity_data['model2_conf'].mean()
+                    agreement_rate_act = activity_data['agree'].mean()
+                    avg_conf1_act = activity_data['model1_conf'].mean()
+                    avg_conf2_act = activity_data['model2_conf'].mean()
 
                     activity_agreement.append({
                         'Activity': activity.replace('_', ' ').title(),
                         'Segments': len(activity_data),
-                        'Agreement Rate': agreement_rate,
-                        'Model 1 Avg Conf': avg_conf1,
-                        'Model 2 Avg Conf': avg_conf2,
-                        'Conf Difference': avg_conf1 - avg_conf2
+                        'Agreement Rate': agreement_rate_act,
+                        'Model 1 Avg Conf': avg_conf1_act,
+                        'Model 2 Avg Conf': avg_conf2_act,
+                        'Conf Difference': avg_conf1_act - avg_conf2_act
                     })
 
             agreement_df = pd.DataFrame(activity_agreement)

@@ -11,6 +11,71 @@ import os
 from datetime import datetime
 import matplotlib  # Add this import
 
+# ==========================
+# PAGE CONFIG - MUST BE FIRST
+# ==========================
+st.set_page_config(
+    page_title="Model Comparison Predictor",
+    layout="wide",
+    page_icon="assets/favicon.ico"
+)
+
+# ==========================
+# RADIO BUTTON FOR SENSOR TYPE SELECTION
+# ==========================
+st.title("🎯 Activity Recognition: Model Comparison Predictor")
+
+# Add radio button at the very top
+sensor_type = st.radio(
+    "Select sensor type for prediction:",
+    ["📱 Accelerometer Only (9 features)", "🏊‍♂️ Accelerometer + Gyroscope (Swimming - 16 features)"],
+    horizontal=True,
+    key="sensor_type_selector"
+)
+
+st.markdown("""
+**Academic Tool:** Load two trained models, compare predictions, and analyze algorithm performance.
+Upload KNN and Random Forest models to see where they agree/disagree on new data.
+""")
+
+# ==========================
+# IMPORT APPROPRIATE MODULE BASED ON SELECTION
+# ==========================
+if sensor_type == "🏊‍♂️ Accelerometer + Gyroscope (Swimming - 16 features)":
+    # Import and run swimming prediction module
+    try:
+        # Try to import swimming_predict module
+        try:
+            # Import without running page config again
+            from swimming_predict import run_swimming_app
+            # Run the swimming app
+            run_swimming_app()
+        except ImportError as e:
+            # If module not found, provide instructions
+            st.error(f"""
+            ❌ **Error importing swimming prediction module: {str(e)}**
+            
+            Please make sure you have:
+            1. Created the `swimming_predict.py` file with the swimming prediction code
+            2. Placed it in the same directory as this app
+            3. The file contains a `run_swimming_app()` function
+            
+            **Solution:** Create `swimming_predict.py` with the swimming prediction code provided earlier.
+            """)
+            st.stop()
+            
+    except Exception as e:
+        st.error(f"❌ Error loading swimming prediction module: {str(e)}")
+        st.stop()
+    
+    # Stop execution here - the swimming app handles everything
+    st.stop()
+
+# ==========================
+# ORIGINAL ACCELEROMETER-ONLY APP
+# ==========================
+# Only run this if accelerometer-only is selected
+
 # Check for required modules
 try:
     import sklearn
@@ -25,27 +90,12 @@ except ImportError:
     """)
     st.stop()
 
-# Import shared modules
+# Import shared modules for accelerometer-only app
 try:
     from features import compute_magnitude
 except ImportError as e:
     st.error(f"❌ Error importing shared modules: {str(e)}")
     st.stop()
-
-# ==========================
-# PAGE CONFIG
-# ==========================
-st.set_page_config(
-    page_title="Predicting Activity",
-    layout="wide",
-    page_icon="assets/favicon.ico"
-)
-
-st.title("🎯 Activity Recognition: Model Comparison Predictor")
-st.markdown("""
-**Academic Tool:** Load two trained models, compare predictions, and analyze algorithm performance.
-Upload KNN and Random Forest models to see where they agree/disagree on new data.
-""")
 
 # ==========================
 # SESSION STATE
